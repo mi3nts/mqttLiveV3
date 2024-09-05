@@ -1,7 +1,9 @@
 # Added by lakitha 
 *.yaml
 *.yml
-*.json 
+*.joblib
+
+
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
