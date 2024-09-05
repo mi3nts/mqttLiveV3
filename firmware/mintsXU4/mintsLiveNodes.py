@@ -33,7 +33,9 @@ liveFolder             = mD.liveFolder
 # updates after the averaging has been done 
 # On this version T will be in C 
 # Next Few Steps - Try out the code and see if the GPS Stuff is working 
-# Add support for humidty corrections 
+# Make sure I do not append climate data if they are not within bounds 
+#  Add support for humidty corrections 
+
 
 class node:
     def __init__(self,nodeInfoRow):
