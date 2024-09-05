@@ -28,8 +28,29 @@ The Resulting .csv should have the following
                 ("Temperature"      ,self.temperatureAvg),
                 ("Pressure"         ,self.pressureAvg),
                 ("Humidity"         ,self.humidityAvg),
-                ("DewPoint"         ,self.dewPointAvg),        
+                ("DewPoint"         ,self.dewPointAvg),
                 ("nopGPS"           ,len(self.dateTimeGPS)),
                 ("nopPM"            ,len(self.dateTimePM)),
                 ("nopClimate"       ,len(self.dateTimeClimate)),
 ```
+Location Data 
+  Preference 
+  1) Live Data
+  2) JSON File
+  3) Git 
+Always save the latest GPS Coordinates when publishing the data to the csv.
+
+The Humidity corrected values should be inserted for PC0_1 - PC10_0 and PM 0_1 to PM 10_0.
+Raw PM Data should have the column names rawPC0_1 - rawPM10_0
+Also the following meta data should also be available 
+      
+            ("temperatureValidity"          ,self.temperatureValidity), 
+            ("humidityValidity"             ,self.humidityValidity),
+            ("momentaryValidity"            ,self.momentaryValidity),
+            ("humidityLikelyhoodValidity"   ,self.humidityLikelyhoodValidity),
+            ("dewPointValidity"             ,self.dewPointValidity),
+            ("correctionRequirment"         ,self.correctionRequirment)
+            ("climateRequirment"            ,self.climateRequirment),
+            ("mlPM2_5"                      ,self.mlPM2_5),
+            ("mlCorrected"                  ,self.mlCorrected),
+      
