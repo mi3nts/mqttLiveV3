@@ -54,3 +54,20 @@ Also the following meta data should also be available
             ("mlPM2_5"                      ,self.mlPM2_5),
             ("mlCorrected"                  ,self.mlCorrected),
       
+These values should alsoe be average and kept 
+
+            (temperatureValidity"          ,self.temperatureValidity), 
+            ("humidityValidity"             ,self.humidityValidity),
+            ("momentaryValidity"            ,self.momentaryValidity),
+            ("humidityLikelyhoodValidity"   ,self.humidityLikelyhoodValidity),
+            ("dewPointValidity"             ,self.dewPointValidity),
+            ("correctionRequirment"         ,self.correctionRequirment)
+            ("climateRequirment"            ,self.climateRequirment),
+
+So that the resulting .csv will have some data on weather the corrections were applied 
+
+Introduce addtional GPS values which arent cleared - Latest Latitude, Longitude and Altitude.
+Introduce aditional variables: jsonread ,.csvread for location estimates 
+
+
+
