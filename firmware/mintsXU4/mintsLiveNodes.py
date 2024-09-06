@@ -304,7 +304,6 @@ class node:
             longitudeCord = -1*longitudeCord
         return longitudeCord
 
-
     def fahrenheitToCelsius(self,fahrenheit):
         return (fahrenheit - 32) / 1.8
 
