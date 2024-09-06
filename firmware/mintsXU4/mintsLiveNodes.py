@@ -335,17 +335,17 @@ class node:
 
     
     def getValidity(self):
-        # print("Getting Validity")     
+        print("Getting Validity")     
         return len(self.pm0_1)>=1;
 
 
 
     def changeStateV2(self):
-        # print("Change State V2")
+        print("Change State V2")
         if self.getValidity():
-            # print("Is Valid")
+            print("Is Valid")
             self.getAverageAll()
-            # self.getTimeV2()
+            self.getTimeV2()
             self.doCSV()
         # self.evenState = not(self.evenState)
         self.clearAll()      
