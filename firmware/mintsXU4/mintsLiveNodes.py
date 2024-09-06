@@ -473,16 +473,19 @@ class node:
             self.latestPressure           = self.pressureAvg
             self.latestHumidity           = self.humidityAvg
             self.latestDewPoint           = self.dewPointAvg
-            # climateDictionary = OrderedDict([
-            #     ("dateTime"         ,self.dateTimeStrCSV),
-            #     ("nodeID"           ,self.nodeID),
-            #     ("climateSensor"    ,self.climateSensor),
-            #     ("Temperature"      ,self.temperatureAvg),
-            #     ("Pressure"         ,self.pressureAvg),
-            #     ("Humidity"         ,self.humidityAvg),
-            #     ("DewPoint"         ,self.dewPointAvg),   
-            #     ("nopClimate"       ,len(self.dateTimeClimate))
-            #        ])
+            
+            climateDictionary = OrderedDict([
+                ("dateTime"         ,self.dateTimeStrCSV),
+                ("nodeID"           ,self.nodeID),
+                ("climateSensor"    ,self.climateSensor),
+                ("Temperature"      ,self.temperatureAvg),
+                ("Pressure"         ,self.pressureAvg),
+                ("Humidity"         ,self.humidityAvg),
+                ("DewPoint"         ,self.dewPointAvg),   
+                ("nopClimate"       ,len(self.dateTimeClimate))
+                   ])
+            
+            
         #  At this point write this json file to mints data 
 
         if (len(self.latitude)>0):
