@@ -34,7 +34,9 @@ liveFolder             = mD.liveFolder
 # On this version T will be in C 
 # Next Few Steps - Try out the code and see if the GPS Stuff is working 
 # Make sure I do not append climate data if they are not within bounds 
-#  Add support for humidty corrections 
+# Add support for humidty corrections 
+# For climate data if there are no  data fill it up with fake data 
+
 
 
 class node:
@@ -132,10 +134,6 @@ class node:
         self.climateRequirment          = [] # Climate  check 
         self.correctionRequirment       = [] # Master  check 
 
-
-
-
-
     def update(self,sensorID,sensorDictionary):
         if sensorID == self.pmSensor:
              self.nodeReaderPM(sensorDictionary)                
@@ -200,56 +198,61 @@ class node:
     def currentUpdateClimate(self):
          # Make sure to only append if climate data is valid 
         if self.climateSensor in {"BME280"}:        
+            temperatureRead  = float(self.dataInClimate['temperature'])
+            pressureRead     = float(self.dataInClimate['pressure'])/100
+            humidityRead     = float(self.dataInClimate['humidity'])
+            dewPointRead     = self.calculateDewPointInC(self.temperature, self.humidity)
 
-            self.temperature.append(float(self.dataInClimate['temperature']))
-            self.pressure.append(float(self.dataInClimate['pressure'])/100)
-            self.humidity.append(float(self.dataInClimate['humidity']))
-            self.dewPoint.append(float(self.calculateDewPointInC(self.temperature, self.humidity)))
-            
-            timeIn = datetime.strptime(self.dataInClimate['dateTime'],'%Y-%m-%d %H:%M:%S.%f')
-            self.dateTimeClimate.append(timeIn)
-            self.lastClimateDateTime = timeIn
-
-        if self.climateSensor in {"BME280V2"}:        
-            self.temperature.append(float(self.dataInClimate['temperature']))
-            self.pressure.append(float(self.dataInClimate['pressure']))
-            self.humidity.append(float(self.dataInClimate['humidity']))
-            self.dewPoint.append(float(self.dataInClimate['dewPoint']))
-            
-            timeIn = datetime.strptime(self.dataInClimate['dateTime'],'%Y-%m-%d %H:%M:%S.%f')
-            self.dateTimeClimate.append(timeIn)
-            self.lastClimateDateTime = timeIn
+        if self.climateSensor in {"BME280V2"}:      
+            temperatureRead  = float(self.dataInClimate['temperature'])
+            pressureRead     = float(self.dataInClimate['pressure'])
+            humidityRead     = float(self.dataInClimate['humidity'])
+            dewPointRead     = float(self.dataInClimate['dewPoint'])
 
         if self.climateSensor in {"BME688CNR"}:       
-            self.temperature.append(float(self.dataInClimate['temperature']))
-            self.pressure.append(float(self.dataInClimate['pressure']))
-            self.humidity.append(float(self.dataInClimate['humidity']))
-            self.dewPoint.append(float(self.calculateDewPointInC(self.temperature, self.humidity)))
-            
-            timeIn = datetime.strptime(self.dataInClimate['dateTime'],'%Y-%m-%d %H:%M:%S.%f')
-            self.dateTimeClimate.append(timeIn)
-            self.lastClimateDateTime = timeIn
-
+            temperatureRead  = float(self.dataInClimate['temperature'])
+            pressureRead     = float(self.dataInClimate['pressure'])
+            humidityRead     = float(self.dataInClimate['humidity'])
+            dewPointRead     = float(self.calculateDewPointInC(self.temperature, self.humidity))
 
         if self.climateSensor in {"BME680"}:       
-            self.temperature.append(float(self.dataInClimate['temperature']))
-            self.pressure.append(float(self.dataInClimate['pressure'])*10)
-            self.humidity.append(float(self.dataInClimate['humidity']))
-            self.dewPoint.append(float(self.calculateDewPointInC(self.temperature, self.humidity)))
+            temperatureRead  = float(self.dataInClimate['temperature'])
+            pressureRead     = float(self.dataInClimate['pressure'])*10
+            humidityRead     = float(self.dataInClimate['humidity'])
+            dewPointRead     = float(self.calculateDewPointInC(self.temperature, self.humidity))
+                    
             
+        if self.climateSensor in {"WIMDA"}:      
+            temperatureRead  = float(self.dataInClimate['airTemperature'])
+            pressureRead     = float(self.dataInClimate['barrometricPressureBars'])*1000
+            humidityRead     = float(self.dataInClimate['relativeHumidity'])
+            dewPointRead     = float(self.dataInClimate['dewPoint'])
+                                
+        # At this point check for validity 
+        if self.checkClimateValidity(self,temperatureRead,pressureRead,humidityRead):
+            self.temperature.append(temperatureRead )
+            self.pressure.append(pressureRead)
+            self.humidity.append(humidityRead)
+            self.dewPoint.append(dewPointRead)
             timeIn = datetime.strptime(self.dataInClimate['dateTime'],'%Y-%m-%d %H:%M:%S.%f')
             self.dateTimeClimate.append(timeIn)
             self.lastClimateDateTime = timeIn
 
-        if self.climateSensor in {"WIMDA"}:       
-            self.temperature.append(float(self.dataInClimate['airTemperature']))
-            self.pressure.append(float(self.dataInClimate['barrometricPressureBars'])*1000)
-            self.humidity.append(float(self.dataInClimate['relativeHumidity']))
-            self.dewPoint.append(float(self.dataInClimate['dewPoint']))
-            
-            timeIn = datetime.strptime(self.dataInClimate['dateTime'],'%Y-%m-%d %H:%M:%S.%f')
-            self.dateTimeClimate.append(timeIn)
-            self.lastClimateDateTime = timeIn
+    def is_valid_temperature(self,temp):
+        return -20 <= temp <= 50  # Assuming temperature is in celsius
+
+    def is_valid_pressure(self,pressure):
+        return  950 <= pressure <= 1100  # Assuming pressure is in milibars
+
+    def is_valid_humidity(self,humidity):
+        return 0 <= humidity <= 100  # Assuming humidity is in percentage
+
+
+    def checkClimateValidity(self,temperatureIn,pressureIn,humidityIn):
+        return self.is_valid_temperature(temperatureIn) and\
+                 self.is_valid_pressure(pressureIn) and\
+                    self.is_valid_humidity(humidityIn) 
+
 
     #  For  GPS Readings 
     def nodeReaderGPS(self,jsonData):
@@ -456,10 +459,10 @@ class node:
         print()        
         print("===============MINTS===============")
         print(sensorDictionary)
-        mP.writeCSV3( mP.getWritePathDateCSV(liveFolder,self.nodeID,\
-            datetime.strptime(self.dateTimeStrCSV,'%Y-%m-%d %H:%M:%S.%f'),\
-                "calibrated"),sensorDictionary)
-        print("CSV Written")
+        # mP.writeCSV3( mP.getWritePathDateCSV(liveFolder,self.nodeID,\
+        #     datetime.strptime(self.dateTimeStrCSV,'%Y-%m-%d %H:%M:%S.%f'),\
+        #         "calibrated"),sensorDictionary)
+        # print("CSV Written")
         # mL.writeMQTTLatestRepublish(sensorDictionary,"mintsCalibrated",self.nodeID)
 
 # from geopy.geocoders import Nominatim
