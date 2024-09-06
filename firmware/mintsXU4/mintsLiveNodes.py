@@ -15,7 +15,7 @@ from mintsXU4 import mintsLatest as mL
 # from mintsXU4 import mintsNow as mN
 import math
 from geopy.geocoders import Nominatim
-
+import traceback
 # from dateutil import tz
 import numpy as np
 #from pyqtgraph import AxisItem
@@ -62,6 +62,9 @@ class node:
         self.lastClimateDateTime = datetime(2010, 1, 1, 0, 0, 0, 0)
         self.lastGPSDateTime     = datetime(2010, 1, 1, 0, 0, 0, 0)
 
+        self.latestPMAvgDateTime      = datetime(2010, 1, 1, 0, 0, 0, 0)
+        self.latestClimateAvgDateTime = datetime(2010, 1, 1, 0, 0, 0, 0)
+        self.latestGPSAvgDateTime     = datetime(2010, 1, 1, 0, 0, 0, 0)
  
         self.pc0_1          = []
         self.pc0_3          = []
@@ -194,6 +197,7 @@ class node:
                 self.currentUpdateClimate()
         except Exception as e:
             print("[ERROR] Could not read JSON data, error: {}".format(e))
+            traceback.print_exc()
     
     def currentUpdateClimate(self):
          # Make sure to only append if climate data is valid 
@@ -201,7 +205,7 @@ class node:
             temperatureRead  = float(self.dataInClimate['temperature'])
             pressureRead     = float(self.dataInClimate['pressure'])/100
             humidityRead     = float(self.dataInClimate['humidity'])
-            dewPointRead     = self.calculateDewPointInC(self.temperature, self.humidity)
+            dewPointRead     = self.calculateDewPointInC(temperatureRead, humidityRead)
 
         if self.climateSensor in {"BME280V2"}:      
             temperatureRead  = float(self.dataInClimate['temperature'])
@@ -213,14 +217,13 @@ class node:
             temperatureRead  = float(self.dataInClimate['temperature'])
             pressureRead     = float(self.dataInClimate['pressure'])
             humidityRead     = float(self.dataInClimate['humidity'])
-            dewPointRead     = float(self.calculateDewPointInC(self.temperature, self.humidity))
+            dewPointRead     = self.calculateDewPointInC(temperatureRead, humidityRead)
 
         if self.climateSensor in {"BME680"}:       
             temperatureRead  = float(self.dataInClimate['temperature'])
             pressureRead     = float(self.dataInClimate['pressure'])*10
             humidityRead     = float(self.dataInClimate['humidity'])
-            dewPointRead     = float(self.calculateDewPointInC(self.temperature, self.humidity))
-                    
+            dewPointRead     = self.calculateDewPointInC(temperatureRead, humidityRead)
             
         if self.climateSensor in {"WIMDA"}:      
             temperatureRead  = float(self.dataInClimate['airTemperature'])
@@ -229,7 +232,7 @@ class node:
             dewPointRead     = float(self.dataInClimate['dewPoint'])
                                 
         # At this point check for validity 
-        if self.checkClimateValidity(self,temperatureRead,pressureRead,humidityRead):
+        if self.checkClimateValidity(temperatureRead,pressureRead,humidityRead):
             self.temperature.append(temperatureRead )
             self.pressure.append(pressureRead)
             self.humidity.append(humidityRead)
@@ -320,29 +323,24 @@ class node:
         dewPoint = 243.04 * (math.log(humidity/100.0) + ((17.625 * temperature)/(243.04 + temperature))) / (17.625 - math.log(humidity/100.0) - ((17.625 * temperature)/(243.04 + temperature)))
         return dewPoint
 
-
-
     def getTimeV2(self):
-        checkTime = datetime.fromtimestamp(mP.getStateV2(self.dateTimePM[-1].timestamp())*liveSpanSec)
-        self.dateTimeStrCSV = str(checkTime.year).zfill(4)+ \
-                "-" + str(checkTime.month).zfill(2) + \
-                "-" + str(checkTime.day).zfill(2) + \
-                " " + str(checkTime.hour).zfill(2) + \
-                ":" + str(checkTime.minute).zfill(2) + \
-                ":" + str(checkTime.second).zfill(2) + '.000'
+        self.dateTimeCSV = datetime.fromtimestamp(mP.getStateV2(self.dateTimePM[-1].timestamp())*liveSpanSec)
+        self.dateTimeStrCSV = str(self.dateTimeCSV.year).zfill(4)+ \
+                "-" + str(self.dateTimeCSV.month).zfill(2) + \
+                "-" + str(self.dateTimeCSV.day).zfill(2) + \
+                " " + str(self.dateTimeCSV.hour).zfill(2) + \
+                ":" + str(self.dateTimeCSV.minute).zfill(2) + \
+                ":" + str(self.dateTimeCSV.second).zfill(2) + '.000'
         # print(self.dateTimeStrCSV)    
         return ;
 
-    
-    def getValidity(self):
-        print("Getting Validity")     
+    def getPMValidity(self):
+        print("Getting PM Validity")     
         return len(self.pm0_1)>=1;
-
-
 
     def changeStateV2(self):
         print("Change State V2")
-        if self.getValidity():
+        if self.getPMValidity():
             print("Is Valid")
             self.getAverageAll()
             self.getTimeV2()
@@ -403,11 +401,15 @@ class node:
             self.pressureAvg     = statistics.mean(self.pressure)
             self.humidityAvg     = statistics.mean(self.humidity)
             self.dewPointAvg     = statistics.mean(self.dewPoint)
-        else:
-            self.temperatureAvg  = 65.0
-            self.pressureAvg     = 1013.25
-            self.humidityAvg     = 50.0
-            self.dewPointAvg     = 55.0
+
+
+        # else if :
+        #     # At this point look for older data with proximity  
+
+        #     self.temperatureAvg  = 65.0
+        #     self.pressureAvg     = 1013.25
+        #     self.humidityAvg     = 50.0
+        #     self.dewPointAvg     = 55.0
             
         if (len(self.latitude)>0):
             self.latitudeAvg  = statistics.mean(self.latitude)
@@ -423,8 +425,9 @@ class node:
         sensorDictionary = OrderedDict([
                 ("dateTime"         ,self.dateTimeStrCSV),
                 ("nodeID"           ,self.nodeID),
-                ("climateSensor"    ,self.climateSensor),
-                ("pmSensor"         ,self.pmSensor),                                
+                ("pmSensor"         ,self.pmSensor),       
+                ("climateSensor"    ,self.climateSensor),     
+                ("gpsSensor"        ,self.gpsSensor),                    
                 ("Latitude"         ,self.latitudeAvg),                
                 ("Longitude"        ,self.longitudeAvg),
                 ("Altitude"         ,self.altitudeAvg),    
@@ -458,11 +461,42 @@ class node:
         print()        
         print("===============MINTS===============")
         print(sensorDictionary)
-        # mP.writeCSV3( mP.getWritePathDateCSV(liveFolder,self.nodeID,\
-        #     datetime.strptime(self.dateTimeStrCSV,'%Y-%m-%d %H:%M:%S.%f'),\
-        #         "calibrated"),sensorDictionary)
-        # print("CSV Written")
+        mP.writeCSV3( mP.getWritePathDateCSV(liveFolder,self.nodeID,\
+            datetime.strptime(self.dateTimeStrCSV,'%Y-%m-%d %H:%M:%S.%f'),\
+                "calibrated"),sensorDictionary)
+        print("CSV Written")
         # mL.writeMQTTLatestRepublish(sensorDictionary,"mintsCalibrated",self.nodeID)
+        
+        if(len(self.temperature)>0):
+            self.latestClimateAvgDateTime = self.dateTimeCSV
+            self.latestTemperature        = self.temperatureAvg
+            self.latestPressure           = self.pressureAvg
+            self.latestHumidity           = self.humidityAvg
+            self.latestDewPoint           = self.dewPointAvg
+            # climateDictionary = OrderedDict([
+            #     ("dateTime"         ,self.dateTimeStrCSV),
+            #     ("nodeID"           ,self.nodeID),
+            #     ("climateSensor"    ,self.climateSensor),
+            #     ("Temperature"      ,self.temperatureAvg),
+            #     ("Pressure"         ,self.pressureAvg),
+            #     ("Humidity"         ,self.humidityAvg),
+            #     ("DewPoint"         ,self.dewPointAvg),   
+            #     ("nopClimate"       ,len(self.dateTimeClimate))
+            #        ])
+        #  At this point write this json file to mints data 
+
+        if (len(self.latitude)>0):
+
+            gpsDictionary = OrderedDict([
+                ("dateTime"         ,self.dateTimeStrCSV),
+                ("nodeID"           ,self.nodeID),
+                ("gpsSensor"        ,self.gpsSensor),                                
+                ("Latitude"         ,self.latitudeAvg),                
+                ("Longitude"        ,self.longitudeAvg),
+                ("Altitude"         ,self.altitudeAvg),          
+                ("nopGPS"           ,len(self.dateTimeGPS)),          
+               ])
+
 
 # from geopy.geocoders import Nominatim
 
