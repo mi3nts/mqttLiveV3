@@ -19,11 +19,11 @@ mqttOn                    = True
 credentialsFile           = 'mintsXU4/credentials/credentials.yaml'
 credentials               = yaml.load(open(credentialsFile))
 
-sensorInfo                = pd.read_csv('https://raw.githubusercontent.com/mi3nts/mqttSubscribersV2/main/lists/sensorIDs.csv')
-portInfo                  = pd.read_csv('https://raw.githubusercontent.com/mi3nts/mqttSubscribersV2/main/lists/portIDs.csv')
+sensorInfo                = pd.read_csv('https://raw.githubusercontent.com/mi3nts/mqttSubscribersV3/main/lists/sensorIDs.csv')
+portInfo                  = pd.read_csv('https://raw.githubusercontent.com/mi3nts/mqttSubscribersV3/main/lists/portIDs.csv')
 
 # nodeInfo                  = pd.read_csv('https://raw.githubusercontent.com/mi3nts/mqttLiveV2/main/lists/sharedAirDFWSupport.csv') # For Testing Purposes --> Different from the NODE ID LOOK UP
-nodeInfo                  = pd.read_csv('https://raw.githubusercontent.com/mi3nts/mqttLiveV2/main/lists/sharedAirDFWSupporTest.csv') # For Testing Purposes --> Different from the NODE ID LOOK UP
+nodeInfo                  = pd.read_csv('https://raw.githubusercontent.com/mi3nts/mqttLiveV3/main/lists/sharedAirDFWSupporTest.csv') # For Testing Purposes --> Different from the NODE ID LOOK UP
 
 
 mqttBrokerDC              = "mqtt.circ.utdallas.edu"
