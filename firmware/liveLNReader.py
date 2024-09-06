@@ -22,6 +22,7 @@ from mintsXU4 import mintsLiveNodes as mLN
 
 
 
+
 mqttPort              = mD.mqttPortLoRa
 mqttBroker            = mD.mqttBrokerLoRa
 mqttCredentialsFile   = mD.credentials
