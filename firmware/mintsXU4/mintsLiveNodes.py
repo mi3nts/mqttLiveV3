@@ -338,6 +338,18 @@ class node:
         print("Getting PM Validity")     
         return len(self.pm0_1)>=1;
 
+
+    def getAltitudeFromGeopy(latitude, longitude):
+        geolocator = Nominatim(user_agent="altitude_finder")
+        location = geolocator.reverse((latitude, longitude), language="en")
+
+        if location and "altitude" in location.raw:
+            altitude = location.raw["altitude"]
+            return altitude
+        else:
+            return None
+
+
     def changeStateV2(self):
         print("Change State V2")
         if self.getPMValidity():
@@ -379,6 +391,33 @@ class node:
 
 
     def getAverageAll(self):
+        # On this function it decides what data to use 
+
+        # 1) Live data 
+        # 2) Prev data recorded from the latest live data (Latest )
+        # 3) Taken from Json data (Coined as JSON data )
+        # These precursers apply only for Climate and GPS data 
+        # And got to this about how this applies for the corrections 
+
+        # The Relevant Flags 
+            # climateConcurrent - Current Readings are used 
+            # climateFirmware 
+            # climateJSON  
+            # climateDummy (This cannot be recent)
+            # climateRecent (10 minutes) - Readings from the firmware or json 
+            # fogLikelyhood
+
+            # GPSConcurrent 
+            # GPSFirmware 
+            # GPSJson 
+            # GPSFromGit
+            # GPSRecent(Check if its from the last 10 minutes)
+            
+            # humidityCorrectionApplied
+            # mlPM2_5CorrectionApplied  
+
+
+
         if(len(self.pc0_1)>0):
             self.pc0_1Avg      = statistics.mean(self.pc0_1)
             self.pc0_3Avg      = statistics.mean(self.pc0_3)
@@ -485,7 +524,6 @@ class node:
                 ("nopClimate"       ,len(self.dateTimeClimate))
                    ])
             
-            
         #  At this point write this json file to mints data 
 
         if (len(self.latitude)>0):
@@ -503,15 +541,6 @@ class node:
 
 # from geopy.geocoders import Nominatim
 
-    def getAltitudeFromGeopy(latitude, longitude):
-        geolocator = Nominatim(user_agent="altitude_finder")
-        location = geolocator.reverse((latitude, longitude), language="en")
-
-        if location and "altitude" in location.raw:
-            altitude = location.raw["altitude"]
-            return altitude
-        else:
-            return None
 
 
 
