@@ -37,8 +37,6 @@ liveFolder             = mD.liveFolder
 # Add support for humidty corrections 
 # For climate data if there are no  data fill it up with fake data 
 
-
-
 class node:
     def __init__(self,nodeInfoRow):
         self.nodeID = nodeInfoRow['nodeID']
@@ -48,10 +46,16 @@ class node:
         self.pmSensor      = nodeInfoRow['pmSensor']
         self.climateSensor = nodeInfoRow['climateSensor']
         self.gpsSensor     = nodeInfoRow['gpsSensor']
+
+        self.jsonClimateData, self.jsonClimateDataRead = \
+                            mL.readJSONLive(self.nodeID,self.climateSensor)
         
-        self.latitudeHC    = nodeInfoRow['latitude']
-        self.longitudeHC   = nodeInfoRow['longitude']
-        self.altitudeHC    = nodeInfoRow['altitude']
+        self.jsonGPSData,     self.jsonGPSDataRead     = \
+                            mL.readJSONLive(self.nodeID,self.gpsSensor)
+
+        self.latitudeGit    = nodeInfoRow['latitude']
+        self.longitudeGit   = nodeInfoRow['longitude']
+        self.altitudeGit    = nodeInfoRow['altitude']
         
         self.evenState       = True
         self.initRunPM       = True
@@ -128,7 +132,7 @@ class node:
         
         # Validity Variables 
         self.temperatureValidity        = [] # Checks if temeperature readings are in range 
-        self.humidityValidity           = []# Checks if humidity readings are in range 
+        self.humidityValidity           = [] # Checks if humidity readings are in range 
         self.pressureValidity           = []
         self.momentaryValidity          = [] # Checks if climate readings are reasont 
         self.humidityLikelyhoodValidity = [] # Checks if humdity readings make sense for fog to be created 
@@ -354,8 +358,8 @@ class node:
         print("Change State V2")
         if self.getPMValidity():
             print("Is Valid")
-            self.getAverageAll()
             self.getTimeV2()
+            self.getAverageAll()
             self.doCSV()
         # self.evenState = not(self.evenState)
         self.clearAll()      
@@ -416,9 +420,24 @@ class node:
             # humidityCorrectionApplied
             # mlPM2_5CorrectionApplied  
 
+        self.climateConcurrent = 0  
+        self.climateFirmware   = 0  
+        self.climateJSON       = 0  
+        self.climateDummy      = 0  
+        self.climateRecent     = 0  
+        self.fogLikelyhood     = 0 
 
+        self.GPSConcurrent     = 0  
+        self.GPSFirmware       = 0  
+        self.GPSJson           = 0  
+        self.GPSFromGit        = 0  
+        self.GPSRecent         = 0  
+
+        self.humidityCorrectionApplied = 0 
+        self.mlPM2_5CorrectionApplied  = 0 
 
         if(len(self.pc0_1)>0):
+            # self.getTimeV2()
             self.pc0_1Avg      = statistics.mean(self.pc0_1)
             self.pc0_3Avg      = statistics.mean(self.pc0_3)
             self.pc0_5Avg      = statistics.mean(self.pc0_5)
@@ -440,27 +459,112 @@ class node:
             self.pressureAvg     = statistics.mean(self.pressure)
             self.humidityAvg     = statistics.mean(self.humidity)
             self.dewPointAvg     = statistics.mean(self.dewPoint)
+            
+            self.climateConcurrent = 1
+            self.climateRecent     = 1
+        else:   
+            if self.checkElapsedTime(self.dateTimeCSV,\
+                                     self.latestClimateAvgDateTime,\
+                                        timedelta(minutes=10)):
+                self.climateFirmware = 1
+                self.climateRecent   = 1
+                self.temperatureAvg  = self.latestTemperature
+                self.pressureAvg     = self.latestPressure
+                self.humidityAvg     = self.latestHumidity
+                self.dewPointAvg     = self.latestDewPoint        
 
+            elif self.checkElapsedTime( self.dateTimeCSV,\
+                                            self.latestClimateAvgDateTime,\
+                                                timedelta(years=10)):
+                self.climateFirmware = 1
+                self.temperatureAvg  = self.latestTemperature
+                self.pressureAvg     = self.latestPressure
+                self.humidityAvg     = self.latestHumidity
+                self.dewPointAvg     = self.latestDewPoint  
+            
+            else:
+                if self.jsonClimateDataRead: 
+                    dateTimeJSON = datetime.strptime(\
+                                        self.jsonClimateData['dateTime'],\
+                                            '%Y-%m-%d %H:%M:%S.%f')
+                    if self.checkElapsedTime(dateTimeJSON,\
+                        self.dateTimeCSV,\
+                            timedelta(minutes=10)):
+                        self.climateRecent = 1
+                        self.climateJSON   = 1  
+                        self.temperatureAvg  = self.jsonClimateData['Temperature']
+                        self.pressureAvg     = self.jsonClimateData['Pressure']
+                        self.humidityAvg     = self.jsonClimateData['Humidity']
+                        self.dewPointAvg     = self.jsonClimateData['Dewpoint']
 
-        # else if :
-        #     # At this point look for older data with proximity  
+                    else: 
+                        self.climateDummy    = 1
+                        self.temperatureAvg  = 25.0
+                        self.pressureAvg     = 1013.25
+                        self.humidityAvg     = 50.0
+                        self.dewPointAvg     = 55.0
 
-        #     self.temperatureAvg  = 65.0
-        #     self.pressureAvg     = 1013.25
-        #     self.humidityAvg     = 50.0
-        #     self.dewPointAvg     = 55.0
+                else:
+                    self.climateDummy    = 1
+                    self.temperatureAvg  = 25.0
+                    self.pressureAvg     = 1013.25
+                    self.humidityAvg     = 50.0
+                    self.dewPointAvg     = 55.0
             
         if (len(self.latitude)>0):
-            self.latitudeAvg  = statistics.mean(self.latitude)
-            self.longitudeAvg = statistics.mean(self.longitude)
-            self.altitudeAvg  = statistics.mean(self.altitude)
+            self.latitudeAvg   = statistics.mean(self.latitude)
+            self.longitudeAvg  = statistics.mean(self.longitude)
+            self.altitudeAvg   = statistics.mean(self.altitude)
+            self.gpsConcurrent = 1
+            self.gpsRecent     = 1
+
         else:
-            self.longitudeAvg = self.longitudeHC
-            self.latitudeAvg  = self.latitudeHC
-            self.altitudeAvg  = self.altitudeHC
+            if self.checkElapsedTime(self.dateTimeCSV,\
+                                     self.latestGPSAvgDateTime,\
+                                        timedelta(minutes=10)):
+                self.latitudeAvg   = self.latestLatitude
+                self.longitudeAvg  = self.latestLongitude
+                self.altitudeAvg   = self.latestAltitude
+                self.gpsRecent     = 1
+                self.gpsFirmware   = 1
+
+            elif self.checkElapsedTime( self.dateTimeCSV,\
+                                            self.latestGPSAvgDateTime,\
+                                                timedelta(years=10)):
+                self.gpsFirmware   = 1
+                self.latitudeAvg   = self.latestLatitude
+                self.longitudeAvg  = self.latestLongitude
+                self.altitudeAvg   = self.latestAltitude
+
+            else:
+                if self.jsonClimateDataRead: 
+                    dateTimeJSON = datetime.strptime(\
+                                        self.jsonGPSData['dateTime'],\
+                                            '%Y-%m-%d %H:%M:%S.%f')
+                    if self.checkElapsedTime(dateTimeJSON,\
+                        self.dateTimeCSV,\
+                            timedelta(minutes=10)):
+                        self.GPSRecent = 1
+
+                    self.GPSJSON   = 1  
+                    self.latitudeAvg      = self.jsonGPSData['Latitude']
+                    self.longitudeAvg     = self.jsonGPSData['Longitude']
+                    self.altitudeAvg      = self.jsonGPSData['Altitude']
+                else: 
+                    self.gpsGit           = 1
+                    self.latitudeAvg   = self.latitudeGit
+                    self.longitudeAvg  = self.longitudeGit
+                    self.altitudeAvg   = self.altitudeGit
+                        
+
+                
+
+    def checkElapsedTime(self,dateTimeOne,dateTimeTwo,timeDeltaIn):
+        time_difference = abs(dateTimeOne - dateTimeTwo)
+        return time_difference <= timeDeltaIn
 
     def doCSV(self):
-        self.getTimeV2()
+        # self.getTimeV2()
         sensorDictionary = OrderedDict([
                 ("dateTime"         ,self.dateTimeStrCSV),
                 ("nodeID"           ,self.nodeID),
@@ -490,11 +594,7 @@ class node:
                 ("DewPoint"         ,self.dewPointAvg),        
                 ("nopGPS"           ,len(self.dateTimeGPS)),
                 ("nopPM"            ,len(self.dateTimePM)),
-                ("nopClimate"       ,len(self.dateTimeClimate)),       
-                ("temperatureMDL"   ,"directDataUsed_noCalibrationDone"),
-                ("pressureMDL"      ,"directDataUsed_noCalibrationDone"),
-                ("humidityMDL"      ,"directDataUsed_noCalibrationDone"),
-                ("dewPointMDL"      ,"directDataUsed_noCalibrationDone")                
+                ("nopClimate"       ,len(self.dateTimeClimate))              
                ])
         
         print()        
@@ -523,10 +623,16 @@ class node:
                 ("DewPoint"         ,self.dewPointAvg),   
                 ("nopClimate"       ,len(self.dateTimeClimate))
                    ])
-            
+            print(climateDictionary)
+            mL.writeJSONLive(self.nodeID,self.climateSensor,climateDictionary)
         #  At this point write this json file to mints data 
 
         if (len(self.latitude)>0):
+
+            self.latestGPSAvgDateTime     = self.dateTimeCSV
+            self.latestLatitude           = self.latitudeAvg
+            self.latestLongitude          = self.longitudeAvg
+            self.latestAltitude           = self.altitudeAvg
 
             gpsDictionary = OrderedDict([
                 ("dateTime"         ,self.dateTimeStrCSV),
@@ -537,9 +643,9 @@ class node:
                 ("Altitude"         ,self.altitudeAvg),          
                 ("nopGPS"           ,len(self.dateTimeGPS)),          
                ])
+            print(gpsDictionary)
+            mL.writeJSONLive(self.nodeID,self.gpsSensor,gpsDictionary)
 
-
-# from geopy.geocoders import Nominatim
 
 
 

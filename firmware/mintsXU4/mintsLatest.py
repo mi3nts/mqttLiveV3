@@ -11,6 +11,8 @@ from mintsXU4 import mintsDefinitions as mD
 from mintsXU4 import mintsSensorReader as mSR
 from mintsXU4 import mintsProcessing as mP
 import ssl
+from collections import OrderedDict
+
 
 macAddress              = mD.macAddress
 mqttPort                = mD.mqttPort
@@ -23,6 +25,8 @@ tlsCert                 = mD.tlsCert
 credentials             = mD.credentials
 # FOR MQTT 
 
+
+liveFolder                = mD.liveFolder
 connected   = False  # Stores the connection status
 broker      = mqttBroker
 port        = mqttPort # Secure port
@@ -173,3 +177,35 @@ def readJSONLatestAllMQTT(nodeID,sensorID):
         return "NaN", False
 
 
+def writeJSONLive(sensorDictionary,nodeID,sensorID):
+    print("Write JSON Live")
+    # Install JSONPICKLE
+    directoryIn  = liveFolder+"/"+nodeID+"/"+sensorID+".json"
+    try:
+
+        sensorDictionary = dict(sensorDictionary)
+
+        # Check directory first (mSR.directoryCheck likely does this)
+        mSR.directoryCheck(directoryIn)      
+        print(sensorDictionary)
+        with open(directoryIn,'w') as fp:
+            mSR.directoryCheck(directoryIn)
+            json.dump(sensorDictionary, fp)
+
+    except Exception as e:
+        print("[ERROR] Could not publish data, error: {}".format(e))
+        print("Json Data Not Written")
+
+
+def readJSONLive(nodeID,sensorID):
+    directoryIn  = liveFolder+"/"+nodeID+"/"+sensorID+".json"
+    try:
+        with open(directoryIn, 'r') as myfile:
+            # dataRead=myfile.read()
+            dataRead=json.load(myfile)
+
+        time.sleep(0.01)
+        return dataRead, True;
+    except Exception as e:
+        print("[ERROR] Could not read data, error: {}".format(e))
+        return "NaN", False
