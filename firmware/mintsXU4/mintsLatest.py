@@ -12,7 +12,7 @@ from mintsXU4 import mintsSensorReader as mSR
 from mintsXU4 import mintsProcessing as mP
 import ssl
 from collections import OrderedDict
-
+import orjson
 
 macAddress              = mD.macAddress
 mqttPort                = mD.mqttPort
@@ -175,19 +175,17 @@ def readJSONLatestAllMQTT(nodeID,sensorID):
     except:
         print("Data Conflict!")
         return "NaN", False
-
-
-def writeJSONLive(sensorDictionary,nodeID,sensorID):
-    print("Write JSON Live")
+    
+def writeJSONLive(nodeID,sensorID,sensorDictionary):
+    # print("Write JSON Live")
     # Install JSONPICKLE
     directoryIn  = liveFolder+"/"+nodeID+"/"+sensorID+".json"
     try:
 
-        sensorDictionary = dict(sensorDictionary)
-
+        # sensorDictionary = dict(sensorDictionary)
         # Check directory first (mSR.directoryCheck likely does this)
         mSR.directoryCheck(directoryIn)      
-        print(sensorDictionary)
+        # print(sensorDictionary)
         with open(directoryIn,'w') as fp:
             mSR.directoryCheck(directoryIn)
             json.dump(sensorDictionary, fp)

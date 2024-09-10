@@ -109,9 +109,9 @@ def on_message(client, userdata, msg):
             print(" ------------------- Data for Live Node found ------------------- ")
             print("Node ID         : " + nodeID)
             print("Sensor ID       : " + sensorID)
-            print("Node Index      : " + str(nodeIndex))
-            print("Live State DC   : " + str(liveState))
-            print("LN Date Time    : " + str(dateTime))
+            # print("Node Index      : " + str(nodeIndex))
+            # print("Live State DC   : " + str(liveState))
+            # print("LN Date Time    : " + str(dateTime))
             # print("Sensor Data     : " +  str(sensorDictionary))
             if currentState != liveState and sensorID != "MBC001":
                 currentState = liveState
@@ -119,6 +119,8 @@ def on_message(client, userdata, msg):
                 print(" - - - ==== - - - ======================== - - - ==== - - - ")
                 print(" - - - ==== - - - ==== Status Changed ==== - - - ==== - - - ")
                 for nodeObject in nodeObjects:
+                    print() 
+                    print("For Node Object" + str(nodeObject.nodeID))
                     nodeObject.changeStateV2()
    
             # print()

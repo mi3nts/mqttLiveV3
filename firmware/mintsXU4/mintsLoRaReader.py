@@ -757,7 +757,9 @@ def loRaSummaryWrite(message,portInfo):
         return dateTime,gatewayID,nodeID,sensorID,framePort,base16Data;
     
     except Exception as e:
-        print("[ERROR] Could not publish data, error: {}".format(e))
+        print()
+
+        print("[ERROR] on LoRa Summary Write for Node ID " + nodeID + " , error: {}".format(e))
         
         return None,None,None,None,None,None;
 
