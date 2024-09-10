@@ -602,7 +602,7 @@ class node:
         self.pm2_5ML =  self.pm2_5Cor
 
         self.setFogLikelyhood()
-
+   
         if self.fogLikelyhood:
             print("Fog formation conditions are met") 
             self.humidityCorrectedPC()
