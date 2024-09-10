@@ -36,7 +36,7 @@ timeSpan                  = mintsDefinitions['timeSpan']
 
 liveFolder                = dataFolder    + "/liveUpdate/results"
 
-
+modelFile                 = "mintsXU4/credentials/climateCorrectionModel.joblib"
 
 
 def findMacAddress():

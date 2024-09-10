@@ -24,10 +24,14 @@ import statistics
 from collections import OrderedDict
 # import pytz
 import sys
+import joblib
+
 
 liveSpanSec            = mD.mintsDefinitions['liveSpanSec']
 liveFolder             = mD.liveFolder
 
+modelFile              = mD.modelFile
+loadedPMModel          = joblib.load(modelFile)
 
 # The humidity correction as well as the machine learning correction only 
 # updates after the averaging has been done 
@@ -88,28 +92,6 @@ class node:
 
         self.dateTimePM     = []
 
-
-        # For Humidity Corrected Values 
-        # Corrected PC Values 
-        self.cor_pc0_1      = []
-        self.cor_pc0_3      = []
-        self.cor_pc0_5      = []
-        self.cor_pc1_0      = []
-        self.cor_pc2_5      = []
-        self.cor_pc5_0      = []
-        self.cor_pc10_0     = []
-
-        #  Corrected PM Values 
-        self.cor_pm0_1      = []
-        self.cor_pm0_3      = []
-        self.cor_pm0_5      = []
-        self.cor_pm1_0      = []
-        self.cor_pm2_5      = []
-        self.cor_pm5_0      = []
-        self.cor_pm10_0     = []
-
-        # For ML Corrected 
-        self.mlPM2_5        = []
 
         # if self.climateSensor  in {"BME280", "BME680", "BME688CNR"}:
         self.temperature         = []
@@ -601,8 +583,69 @@ class node:
                     self.longitudeAvg  = self.longitudeGit
                     self.altitudeAvg   = self.altitudeGit
                         
+    def applyHumidityCorrections(self):
 
-                
+        self.pc0_1Cor, self.pc0_3Cor, self.pc0_5Cor, \
+            self.pc1_0Cor, self.pc2_5Cor, self.pc5_0Cor,\
+                self.pc10_0Cor \
+                            =  self.pc0_1Avg, self.pc0_3Avg, self.pc0_5Avg,\
+                                 self.pc1_0Avg, self.pc2_5Avg, self.pc5_0Avg, \
+                                    self.pc10_0Avg        
+            
+        self.pm0_1Cor, self.pm0_3Cor, self.pm0_5Cor, \
+            self.pm1_0Cor, self.pm2_5Cor, self.pm5_0Cor,\
+                self.pm10_0Cor \
+                            =  self.pm0_1Avg, self.pm0_3Avg, self.pm0_5Avg,\
+                                self.pm1_0Avg, self.pm2_5Avg, self.pm5_0Avg, \
+                                    self.pm10_0Avg 
+
+        self.pm2_5ML =  self.pm2_5Cor
+
+        self.setFogLikelyhood()
+
+        if self.fogLikelyhood:
+            print("Fog formation conditions are met") 
+            self.humidityCorrectedPC()
+            self.humidityCorrectedPM()
+            self.humidityCorrectionApplied = 1
+
+        if self.climateRecent:
+            print("Applying ML")
+
+
+
+    def mlCorrectedPM(self):
+        try:
+            foggy = float(self.temperature) - float(self.dewPoint)
+            data = {'cor_pm2_5': [float(self.cor_pm2_5)],\
+                     'temperature': [float(self.temperature)],\
+                       'pressure': [self.pressure],\
+                          'humidity':[self.humidity], \
+                            'dewPoint':[self.dewPoint],\
+                                'temp_dew':[foggy]}
+            dfInput = pd.DataFrame(data)
+            prediction = self.makePrediction(loadedPMModel, dfInput)
+            self.pm2_5ML    =  prediction["Predictions"][0]
+            self.mlPM2_5CorrectionApplied = 1
+
+        except Exception as e:
+            print("An error  occured")
+            print(e)
+            self.mlPM2_5     = self.pm2_5Cor
+            return 
+
+    def makePrediction(self,modelName, est_df):
+        prediction = pd.DataFrame(modelName.predict(est_df),columns=["Predictions"])
+        return prediction   
+    
+
+    def setFogLikelyhood(self):
+
+        self.fogLikelyhood = self.climateRecent and \
+                                self.humidityAvg>40 and \
+                                    self.temperatureAvg> -50 and \
+                                        self.temperatureAvg - self.dewPointAvg < 2.5 
+
 
     def checkElapsedTime(self,dateTimeOne,dateTimeTwo,timeDeltaIn):
         time_difference = abs(dateTimeOne - dateTimeTwo)
@@ -618,20 +661,21 @@ class node:
             ("Latitude", self.latitudeAvg),                
             ("Longitude", self.longitudeAvg),
             ("Altitude", self.altitudeAvg),    
-            ("PC0_1", self.pc0_1Avg),
-            ("PC0_3", self.pc0_3Avg),
-            ("PC0_5", self.pc0_5Avg),
-            ("PC1", self.pc1_0Avg),
-            ("PC2_5", self.pc2_5Avg),
-            ("PC5", self.pc5_0Avg),
-            ("PC10", self.pc10_0Avg),
-            ("PM0_1", self.pm0_1Avg),
-            ("PM0_3", self.pm0_3Avg),
-            ("PM0_5", self.pm0_5Avg),
-            ("PM1", self.pm1_0Avg),
-            ("PM2_5", self.pm2_5Avg),
-            ("PM5_0", self.pm5_0Avg),
-            ("PM10", self.pm10_0Avg),
+            ("PC0_1", self.pc0_1Cor),
+            ("PC0_3", self.pc0_3Cor),
+            ("PC0_5", self.pc0_5Cor),
+            ("PC1",   self.pc1_0Cor),
+            ("PC2_5", self.pc2_5Cor),
+            ("PC5",   self.pc5_0Cor),
+            ("PC10",  self.pc10_0Cor),
+            ("PM0_1", self.pm0_1Cor),
+            ("PM0_3", self.pm0_3Cor),
+            ("PM0_5", self.pm0_5Cor),
+            ("PM1",   self.pm1_0Cor),
+            ("PM2_5", self.pm2_5Cor),
+            ("PM5_0", self.pm5_0Cor),
+            ("PM10",  self.pm10_0Cor),
+            ("PM2_5ML", self.pm2_5Cor),                 
             ("Temperature", self.temperatureAvg),
             ("Pressure", self.pressureAvg),
             ("Humidity", self.humidityAvg),
@@ -649,7 +693,7 @@ class node:
             ("PM1Raw", self.pm1_0Avg),
             ("PM2_5Raw", self.pm2_5Avg),
             ("PM5_0Raw", self.pm5_0Avg),
-            ("PM10Raw", self.pm10_0Avg),          
+            ("PM10Raw", self.pm10_0Avg),
             ("climateConcurrent", self.climateConcurrent), 
             ("climateFirmware", self.climateFirmware), 
             ("climateJSON", self.climateJSON), 
@@ -668,6 +712,9 @@ class node:
             ("nopClimate", len(self.dateTimeClimate))              
         ])
 
+
+        
+
         print()        
         print("===============MINTS===============")
         print(sensorDictionary)
@@ -678,6 +725,173 @@ class node:
         # mL.writeMQTTLatestRepublish(sensorDictionary,"mintsCalibrated",self.nodeID)
 
 
+
+    def humidityCorrectedPC(self):
+
+            pc0_1  = float(self.pc0_1Avg)
+            pc0_3  = float(self.pc0_3Avg)
+            pc0_5  = float(self.pc0_5Avg)
+            pc1_0  = float(self.pc1_0Avg)
+            pc2_5  = float(self.pc2_5Avg)
+            pc5_0  = float(self.pc5_0Avg)
+            pc10_0 = float(self.pc10_0Avg)
+
+            hum = float(self.humidityAvg)
+
+
+            print('Condition is satisfied')
+            data = {'count': [pc0_1, None, pc0_3, pc0_5, pc1_0, pc2_5, pc5_0, pc10_0, None],
+                    'D_range': [50, 20, 200, 200, 500, 1500, 2500, 5000, None],
+                    'D_point': [50, 80, 100, 300, 500, 1000, 2500, 5000, 10000]}
+            df1 = pd.DataFrame(data)
+            df1['N/D'] = df1['count']/df1['D_range']
+
+            df1['height_ini'] = 0
+            df1.loc[7, 'height_ini'] = (2*df1.loc[7, 'count'])/5000
+            df1.loc[6, 'height_ini'] = (2*df1.loc[6, 'count'])/2500 - df1.loc[7, 'height_ini']
+            df1.loc[5, 'height_ini'] = (2*df1.loc[5, 'count'])/1500 - df1.loc[6, 'height_ini']
+            df1.loc[4, 'height_ini'] = (2*df1.loc[4, 'count'])/500 - df1.loc[5, 'height_ini']
+            df1.loc[3, 'height_ini'] = (2*df1.loc[3, 'count'])/200 - df1.loc[4, 'height_ini']
+            df1.loc[2, 'height_ini'] = (2*df1.loc[2, 'count'])/200 - df1.loc[3, 'height_ini']
+            df1.loc[0, 'height_ini'] = (2*df1.loc[0, 'count'])/50 - df1.loc[2, 'height_ini']
+            df1.loc[1, 'height_ini'] = (20*(df1.loc[0, 'height_ini']-df1.loc[2, 'height_ini'])/50) + df1.loc[2, 'height_ini']
+            df1.loc[1, 'count'] = 0.5*(df1.loc[1, 'height_ini']+df1.loc[2, 'height_ini'])*20
+
+            RH = (hum) * 0.7
+            RH = 98 if RH >= 99 else RH
+            k = 0.62
+            df1['D_dry_point'] = df1['D_point']/((1 + k*(RH/(100-RH)))**(1/3))
+
+            df1['D_dry_range'] = df1['D_dry_point'].diff().shift(-1)
+
+            df1['fit_height_ini'] = 0
+
+            df1.loc[7, 'fit_height_ini'] = (2*df1.loc[7, 'count'])/df1.loc[7, 'D_dry_range']
+            df1.loc[6, 'fit_height_ini'] = (2*df1.loc[6, 'count'])/df1.loc[6, 'D_dry_range'] - df1.loc[7, 'fit_height_ini']
+            df1.loc[5, 'fit_height_ini'] = (2*df1.loc[5, 'count'])/df1.loc[5, 'D_dry_range'] - df1.loc[6, 'fit_height_ini']
+            df1.loc[4, 'fit_height_ini'] = (2*df1.loc[4, 'count'])/df1.loc[4, 'D_dry_range'] - df1.loc[5, 'fit_height_ini']
+            df1.loc[3, 'fit_height_ini'] = (2*df1.loc[3, 'count'])/df1.loc[3, 'D_dry_range'] - df1.loc[4, 'fit_height_ini']
+            df1.loc[2, 'fit_height_ini'] = (2*df1.loc[2, 'count'])/df1.loc[2, 'D_dry_range'] - df1.loc[3, 'fit_height_ini']
+            df1.loc[1, 'fit_height_ini'] = (2*df1.loc[1, 'count'])/df1.loc[1, 'D_dry_range'] - df1.loc[2, 'fit_height_ini']
+
+            df1['slope'] = (df1['fit_height_ini'].shift(-1) - df1['fit_height_ini']) / df1['D_dry_range']
+            df1['interc'] = df1['fit_height_ini'] - df1['slope'] * df1['D_dry_point']
+
+            df1['cor_height'] = None
+            df1['cor_count'] = 0
+
+            if df1.loc[8, 'D_dry_point'] > 5000:
+                df1.loc[7, 'cor_height'] = df1.loc[7, 'slope']*5000 + df1.loc[7, 'interc']
+                df1.loc[7, 'cor_count'] = 0.5*df1.loc[7, 'cor_height']*(df1.loc[8, 'D_dry_point']-5000)
+            else:
+                df1.loc[7, 'cor_height'] = 0
+                df1.loc[7, 'cor_count'] = 0
+            
+            if (2500<df1.loc[7, 'D_dry_point']<=5000)&(df1.loc[8, 'D_dry_point']>5000):
+                df1.loc[6, 'cor_height'] = df1.loc[6, 'slope']*2500 + df1.loc[6, 'interc']
+                df1.loc[6, 'cor_count'] = (0.5*(df1.loc[7, 'cor_height']+df1.loc[7, 'fit_height_ini'])*(5000-df1.loc[7, 'D_dry_point'])) + (0.5*(df1.loc[6, 'cor_height']+df1.loc[7, 'fit_height_ini'])*(df1.loc[7, 'D_dry_point']-2500))
+            elif (2500<df1.loc[7, 'D_dry_point']<5000)&(df1.loc[8, 'D_dry_point']<5000):
+                df1.loc[6, 'cor_height'] = df1.loc[6, 'slope']*2500 + df1.loc[6, 'interc']
+                df1.loc[6, 'cor_count'] = (0.5*(df1.loc[6, 'cor_height']+df1.loc[7, 'fit_height_ini'])*(df1.loc[7, 'D_dry_point']-2500)) + (0.5*df1.loc[7, 'fit_height_ini']*(df1.loc[8, 'D_dry_point']-df1.loc[7, 'D_dry_point']))
+            elif (df1.loc[7, 'D_dry_point']<2500)&(df1.loc[8, 'D_dry_point']<5000):
+                df1.loc[6, 'cor_height'] = df1.loc[7, 'slope']*2500 + df1.loc[7, 'interc']
+                df1.loc[6, 'cor_count'] = (0.5*df1.loc[6, 'cor_height'])*(df1.loc[8, 'D_dry_point']-2500)
+            else:
+                df1.loc[6, 'cor_height'] = df1.loc[7, 'slope']*2500 + df1.loc[7, 'interc']
+                df1.loc[6, 'cor_count'] = 0.5*(df1.loc[7, 'cor_height']+df1.loc[6, 'cor_height'])*2500
+            
+            if (1000<df1.loc[6, 'D_dry_point']<=2500)&(df1.loc[7, 'D_dry_point']>2500):
+                df1.loc[5, 'cor_height'] = df1.loc[5, 'slope']*1000 + df1.loc[5, 'interc']
+                df1.loc[5, 'cor_count'] = (0.5*(df1.loc[6, 'cor_height']+df1.loc[6, 'fit_height_ini'])*(2500-df1.loc[6, 'D_dry_point'])) + (0.5*(df1.loc[5, 'cor_height']+df1.loc[6, 'fit_height_ini'])*(df1.loc[6, 'D_dry_point']-1000))
+            elif (1000<df1.loc[6, 'D_dry_point']<2500)&(df1.loc[7, 'D_dry_point']<2500):
+                df1.loc[5, 'cor_height'] = df1.loc[5, 'slope']*1000 + df1.loc[5, 'interc']
+                df1.loc[5, 'cor_count'] = (0.5*(df1.loc[5, 'cor_height']+df1.loc[6, 'fit_height_ini'])*(df1.loc[6, 'D_dry_point']-1000)) + (0.5*(df1.loc[6,'fit_height_ini']+df1.loc[7,'fit_height_ini'])*(df1.loc[7,'D_dry_point']-df1.loc[6,'D_dry_point'])) + (0.5*(df1.loc[7,'fit_height_ini']+df1.loc[6,'cor_height'])*(2500-df1.loc[7,'D_dry_point']))
+            elif (df1.loc[6,'D_dry_point']<1000)&(df1.loc[7,'D_dry_point']<2500):
+                df1.loc[5,'cor_height'] = df1.loc[6,'slope']*1000 + df1.loc[6,'interc']
+                df1.loc[5,'cor_count'] = (0.5*(df1.loc[6,'cor_height']+df1.loc[7,'fit_height_ini'])*(2500-df1.loc[7,'D_dry_point'])) + (0.5*(df1.loc[5,'cor_height']+df1.loc[7,'fit_height_ini'])*(df1.loc[7,'D_dry_point']-1000))
+            else:
+                df1.loc[5,'cor_height'] = df1.loc[6,'slope']*1000 + df1.loc[6,'interc']
+                df1.loc[5,'cor_count'] = 0.5*(df1.loc[6,'cor_height']+df1.loc[5,'cor_height'])*1500
+
+            if (500<df1.loc[5,'D_dry_point']<=1000)&(df1.loc[6,'D_dry_point']>1000):
+                df1.loc[4,'cor_height'] = df1.loc[4,'slope']*500 + df1.loc[4,'interc']
+                df1.loc[4,'cor_count'] = (0.5*(df1.loc[5,'cor_height']+df1.loc[5,'fit_height_ini'])*(1000-df1.loc[5,'D_dry_point'])) + (0.5*(df1.loc[4,'cor_height']+df1.loc[5,'fit_height_ini'])*(df1.loc[5,'D_dry_point']-500))
+            elif (500<df1.loc[5,'D_dry_point']<1000)&(df1.loc[6,'D_dry_point']<1000):
+                df1.loc[4,'cor_height'] = df1.loc[4,'slope']*500 + df1.loc[4,'interc']
+                df1.loc[4,'cor_count'] = (0.5*(df1.loc[4,'cor_height']+df1.loc[5,'fit_height_ini'])*(df1.loc[5,'D_dry_point']-500)) + (0.5*(df1.loc[5,'fit_height_ini']+df1.loc[6,'fit_height_ini'])*(df1.loc[6,'D_dry_point']-df1.loc[5,'D_dry_point'])) + (0.5*(df1.loc[6,'fit_height_ini']+df1.loc[5,'cor_height'])*(1000-df1.loc[6,'D_dry_point']))
+            elif (df1.loc[5,'D_dry_point']<500)&(df1.loc[6,'D_dry_point']<1000):
+                df1.loc[4,'cor_height'] = df1.loc[5,'slope']*500 + df1.loc[5,'interc']
+                df1.loc[4,'cor_count'] = (0.5*(df1.loc[5,'cor_height']+df1.loc[6,'fit_height_ini'])*(1000-df1.loc[6,'D_dry_point'])) + (0.5*(df1.loc[4,'cor_height']+df1.loc[6,'fit_height_ini'])*(df1.loc[6,'D_dry_point']-500))
+            else:
+                df1.loc[4,'cor_height'] = df1.loc[5,'slope']*500 + df1.loc[5,'interc']
+                df1.loc[4,'cor_count'] = 0.5*(df1.loc[5,'cor_height']+df1.loc[4,'cor_height'])*500
+
+            if (300<df1.loc[4,'D_dry_point']<=500)&(df1.loc[5,'D_dry_point']>500):
+                df1.loc[3,'cor_height'] = df1.loc[3,'slope']*300 + df1.loc[3,'interc']
+                df1.loc[3,'cor_count'] = (0.5*(df1.loc[4,'cor_height']+df1.loc[4,'fit_height_ini'])*(500-df1.loc[4,'D_dry_point'])) + (0.5*(df1.loc[3,'cor_height']+df1.loc[4,'fit_height_ini'])*(df1.loc[4,'D_dry_point']-300))
+            elif (300<df1.loc[4,'D_dry_point']<500)&(df1.loc[5,'D_dry_point']<500):
+                df1.loc[3,'cor_height'] = df1.loc[3,'slope']*300 + df1.loc[3,'interc']
+                df1.loc[3,'cor_count'] = (0.5*(df1.loc[3,'cor_height']+df1.loc[4,'fit_height_ini'])*(df1.loc[4,'D_dry_point']-300)) + (0.5*(df1.loc[4,'fit_height_ini']+df1.loc[5,'fit_height_ini'])*(df1.loc[5,'D_dry_point']-df1.loc[4,'D_dry_point'])) + (0.5*(df1.loc[5,'fit_height_ini']+df1.loc[4,'cor_height'])*(500-df1.loc[5,'D_dry_point']))
+            elif (df1.loc[4,'D_dry_point']<300)&(df1.loc[5,'D_dry_point']<500):
+                df1.loc[3,'cor_height'] = df1.loc[4,'slope']*300 + df1.loc[4,'interc']
+                df1.loc[3,'cor_count'] = (0.5*(df1.loc[4,'cor_height']+df1.loc[5,'fit_height_ini'])*(500-df1.loc[5,'D_dry_point'])) + (0.5*(df1.loc[3,'cor_height']+df1.loc[5,'fit_height_ini'])*(df1.loc[5,'D_dry_point']-300))
+            else:
+                df1.loc[3,'cor_height'] = df1.loc[4,'slope']*300 + df1.loc[4,'interc']
+                df1.loc[3,'cor_count'] = 0.5*(df1.loc[4,'cor_height']+df1.loc[3,'cor_height'])*200
+
+            if (100<df1.loc[3,'D_dry_point']<=300)&(df1.loc[4,'D_dry_point']>300):
+                df1.loc[2,'cor_height'] = df1.loc[2,'slope']*100 + df1.loc[2,'interc']
+                df1.loc[2,'cor_count'] = (0.5*(df1.loc[3,'cor_height']+df1.loc[3,'fit_height_ini'])*(300-df1.loc[3,'D_dry_point'])) + (0.5*(df1.loc[2,'cor_height']+df1.loc[3,'fit_height_ini'])*(df1.loc[3,'D_dry_point']-100))
+            elif (100<df1.loc[3,'D_dry_point']<300)&(df1.loc[4,'D_dry_point']<300):
+                df1.loc[2,'cor_height'] = df1.loc[2,'slope']*100 + df1.loc[2,'interc']
+                df1.loc[2,'cor_count'] = (0.5*(df1.loc[2,'cor_height']+df1.loc[3,'fit_height_ini'])*(df1.loc[3,'D_dry_point']-100)) + (0.5*(df1.loc[3,'fit_height_ini']+df1.loc[4,'fit_height_ini'])*(df1.loc[4,'D_dry_point']-df1.loc[3,'D_dry_point'])) + (0.5*(df1.loc[4,'fit_height_ini']+df1.loc[3,'cor_height'])*(300-df1.loc[4,'D_dry_point']))
+            elif (df1.loc[3,'D_dry_point']<100)&(df1.loc[4,'D_dry_point']<300):
+                df1.loc[2,'cor_height'] = df1.loc[3,'slope']*100 + df1.loc[3,'interc']
+                df1.loc[2,'cor_count'] = (0.5*(df1.loc[3,'cor_height']+df1.loc[4,'fit_height_ini'])*(300-df1.loc[4,'D_dry_point'])) + (0.5*(df1.loc[2,'cor_height']+df1.loc[4,'fit_height_ini'])*(df1.loc[4,'D_dry_point']-100))
+            else:
+                df1.loc[2,'cor_height'] = df1.loc[3,'slope']*100 + df1.loc[3,'interc']
+                df1.loc[2,'cor_count'] = 0.5*(df1.loc[3,'cor_height']+df1.loc[2,'cor_height'])*200
+
+            if (50<df1.loc[2,'D_dry_point']<=100)&(df1.loc[3,'D_dry_point']>100):
+                df1.loc[0,'cor_height'] = df1.loc[1,'slope']*50 + df1.loc[1,'interc']
+                df1.loc[0,'cor_count'] = (0.5*(df1.loc[2,'cor_height']+df1.loc[2,'fit_height_ini'])*(100-df1.loc[2,'D_dry_point'])) + (0.5*(df1.loc[0,'cor_height']+df1.loc[2,'fit_height_ini'])*(df1.loc[2,'D_dry_point']-50))
+            elif (50<df1.loc[2,'D_dry_point']<100)&(df1.loc[3,'D_dry_point']>100):
+                df1.loc[0,'cor_height'] = df1.loc[1,'slope']*50 + df1.loc[1,'interc']
+                df1.loc[0,'cor_count'] = (0.5*(df1.loc[0,'cor_height']+df1.loc[2,'fit_height_ini'])*(df1.loc[2,'D_dry_point']-50)) + (0.5*(df1.loc[2,'fit_height_ini']+df1.loc[3,'fit_height_ini'])*(df1.loc[3,'D_dry_point']-df1.loc[2,'D_dry_point'])) + (0.5*(df1.loc[3,'fit_height_ini']+df1.loc[2,'cor_height'])*(100-df1.loc[3,'D_dry_point']))
+            elif (df1.loc[2,'D_dry_point']<50)&(df1.loc[3,'D_dry_point']>100):
+                df1.loc[0,'cor_height'] = df1.loc[2,'slope']*50 + df1.loc[2,'interc']
+                df1.loc[0,'cor_count'] = (0.5*(df1.loc[2,'cor_height']+df1.loc[3,'fit_height_ini'])*(100-df1.loc[3,'D_dry_point'])) + (0.5*(df1.loc[0,'cor_height']+df1.loc[3,'fit_height_ini'])*(df1.loc[3,'D_dry_point']-50))
+            else:
+                df1.loc[0,'cor_height'] = df1.loc[2,'slope']*50 + df1.loc[2,'interc']
+                df1.loc[0,'cor_count'] = 0.5*(df1.loc[2,'cor_height']+df1.loc[0,'cor_height'])*50
+                
+            
+            self.pc0_1Cor, self.pc0_3Cor, self.pc0_5Cor, self.pc1_0Cor, self.pc2_5Cor, self.pc5_0Cor, self.pc10_0Cor = \
+                df1.loc[0,'cor_count'], df1.loc[2,'cor_count'], df1.loc[3,'cor_count'], df1.loc[4,'cor_count'], df1.loc[5,'cor_count'], df1.loc[6,'cor_count'], df1.loc[7,'cor_count']
+            
+
+            
+    def humidityCorrectedPM(self):
+
+        m0_1 = 8.355696123812269e-07
+        m0_3 = 2.2560825222215327e-05
+        m0_5 = 0.00010446111749483851
+        m1_0 = 0.0008397941861044865
+        m2_5 = 0.013925696906339288
+        m5_0 = 0.12597702778750686
+        m10_0 = 1.0472
+
+        self.pm0_1Cor   = m0_1*self.pc0_1Cor
+        self.pm0_3Cor   = self.pm0_1Cor + m0_3*self.pc0_3Cor
+        self.pm0_5Cor   = self.pm0_3Cor + m0_5*self.pc0_5Cor
+        self.pm1_0Cor   = self.pm0_5Cor + m1_0*self.pc1_0Cor
+        self.pm2_5Cor   = self.pm1_0Cor + m2_5*self.pc2_5Cor
+        self.pm5_0Cor   = self.pm2_5Cor + m5_0*self.pc5_0Cor
+        self.pm10_0Cor  = self.pm5_0Cor + m10_0*self.pc10_0Cor
+
+        self.pm2_5ML =  self.pm2_5Cor
+        
+        print("Humidity Corrected PM")
 
 
 
