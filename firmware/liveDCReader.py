@@ -20,6 +20,7 @@ import yaml
 import collections
 import json
 import ssl
+
 from mintsXU4 import mintsSensorReader as mSR
 from mintsXU4 import mintsLoRaReader as mLR
 from mintsXU4 import mintsProcessing as mP
@@ -103,12 +104,12 @@ def on_message(client, userdata, msg):
 
         # Bird call data comes with a lag  
         if nodeIndex>=0 :   
-            print() 
-            print("==================================================================")
-            print(" - - - ---------------- MINTS DATA RECEIVED ----------------- - - ")             
-            print(" ------------------- Data for Live Node found ------------------- ")
-            print("Node ID         : " + nodeID)
-            print("Sensor ID       : " + sensorID)
+            # print() 
+            # print("==================================================================")
+            # print(" - - - ---------------- MINTS DATA RECEIVED ----------------- - - ")             
+            # print(" ------------------- Data for Live Node found ------------------- ")
+            # print("Node ID         : " + nodeID)
+            # print("Sensor ID       : " + sensorID)
             # print("Node Index      : " + str(nodeIndex))
             # print("Live State DC   : " + str(liveState))
             # print("LN Date Time    : " + str(dateTime))
@@ -120,7 +121,7 @@ def on_message(client, userdata, msg):
                 print(" - - - ==== - - - ==== Status Changed ==== - - - ==== - - - ")
                 for nodeObject in nodeObjects:
                     print() 
-                    print("For Node Object" + str(nodeObject.nodeID))
+                    print("For Node Object: " + str(nodeObject.nodeID))
                     nodeObject.changeStateV2()
    
             # print()

@@ -123,6 +123,31 @@ class node:
         self.climateRequirment          = [] # Climate  check 
         self.correctionRequirment       = [] # Master  check 
 
+
+
+    def changeStateV2(self):
+        # print("Change State V2")
+        # if self.getPMValidity():
+        print("Getting Time")
+        if self.getPMValidity():
+            self.getTimePM()
+
+        if self.getClimateValidity():
+            self.getTimeClimate()
+
+        if self.getGPSValidity():
+            self.getTimeGPS()
+
+        print("Getting AverageAll")
+        if self.dataAvailability():
+            self.getAverageAll()
+
+        if self.getPMValidity():
+            self.applyCorrections()
+            self.doCSV()
+
+        self.clearAll()      
+
     def update(self,sensorID,sensorDictionary):
         if sensorID == self.pmSensor:
              self.nodeReaderPM(sensorDictionary)                
@@ -146,6 +171,7 @@ class node:
                 self.currentUpdatePM()
         except Exception as e:
             print("[ERROR] Could not read JSON data, error: {}".format(e))
+            traceback.print_exc()
     
     def currentUpdatePM(self):
 
@@ -252,6 +278,7 @@ class node:
                 self.currentUpdateGPS()
         except Exception as e:
             print("[ERROR] Could not read JSON data, error: {}".format(e))
+            traceback.print_exc()
 
     def currentUpdateGPS(self):
 
@@ -309,22 +336,70 @@ class node:
         dewPoint = 243.04 * (math.log(humidity/100.0) + ((17.625 * temperature)/(243.04 + temperature))) / (17.625 - math.log(humidity/100.0) - ((17.625 * temperature)/(243.04 + temperature)))
         return dewPoint
 
-    def getTimeV2(self):
-        self.dateTimeCSV = datetime.fromtimestamp(mP.getStateV2(self.dateTimePM[-1].timestamp())*liveSpanSec)
-        self.dateTimeStrCSV = str(self.dateTimeCSV.year).zfill(4)+ \
-                "-" + str(self.dateTimeCSV.month).zfill(2) + \
-                "-" + str(self.dateTimeCSV.day).zfill(2) + \
-                " " + str(self.dateTimeCSV.hour).zfill(2) + \
-                ":" + str(self.dateTimeCSV.minute).zfill(2) + \
-                ":" + str(self.dateTimeCSV.second).zfill(2) + '.000'
+    # def getTimeV2(self):
+    #     self.dateTimeCSV = datetime.fromtimestamp(mP.getStateV2(self.dateTimePM[-1].timestamp())*liveSpanSec)
+    #     self.dateTimeStrCSV = str(self.dateTimeCSV.year).zfill(4)+ \
+    #             "-" + str(self.dateTimeCSV.month).zfill(2) + \
+    #             "-" + str(self.dateTimeCSV.day).zfill(2) + \
+    #             " " + str(self.dateTimeCSV.hour).zfill(2) + \
+    #             ":" + str(self.dateTimeCSV.minute).zfill(2) + \
+    #             ":" + str(self.dateTimeCSV.second).zfill(2) + '.000'
+    #     # print(self.dateTimeStrCSV)    
+    #     return ;
+
+
+    def getTimePM(self):
+        self.dateTimePMCSV = datetime.fromtimestamp(mP.getStateV2(self.dateTimePM[-1].timestamp())*liveSpanSec)
+        self.dateTimePMStrCSV = str(self.dateTimePMCSV.year).zfill(4)+ \
+                "-" + str(self.dateTimePMCSV.month).zfill(2) + \
+                "-" + str(self.dateTimePMCSV.day).zfill(2) + \
+                " " + str(self.dateTimePMCSV.hour).zfill(2) + \
+                ":" + str(self.dateTimePMCSV.minute).zfill(2) + \
+                ":" + str(self.dateTimePMCSV.second).zfill(2) + '.000'
         # print(self.dateTimeStrCSV)    
         return ;
+    
+    def getTimeClimate(self):
+        self.dateTimeClimateCSV = datetime.fromtimestamp(mP.getStateV2(self.dateTimeClimate[-1].timestamp())*liveSpanSec)
+        self.dateTimeClimateStrCSV = str(self.dateTimeClimateCSV.year).zfill(4)+ \
+                "-" + str(self.dateTimeClimateCSV.month).zfill(2) + \
+                "-" + str(self.dateTimeClimateCSV.day).zfill(2) + \
+                " " + str(self.dateTimeClimateCSV.hour).zfill(2) + \
+                ":" + str(self.dateTimeClimateCSV.minute).zfill(2) + \
+                ":" + str(self.dateTimeClimateCSV.second).zfill(2) + '.000'
+        # print(self.dateTimeStrCSV)    
+        return ;
+
+    def getTimeGPS(self):
+        self.dateTimeGPSCSV = datetime.fromtimestamp(mP.getStateV2(self.dateTimeGPS[-1].timestamp())*liveSpanSec)
+        self.dateTimeGPSStrCSV = str(self.dateTimeGPSCSV.year).zfill(4)+ \
+                "-" + str(self.dateTimeGPSCSV.month).zfill(2) + \
+                "-" + str(self.dateTimeGPSCSV.day).zfill(2) + \
+                " " + str(self.dateTimeGPSCSV.hour).zfill(2) + \
+                ":" + str(self.dateTimeGPSCSV.minute).zfill(2) + \
+                ":" + str(self.dateTimeGPSCSV.second).zfill(2) + '.000'
+        # print(self.dateTimeStrCSV)    
+        return ;
+
+
 
     def getPMValidity(self):
         # print("Getting PM Validity")     
         # print(self.pm0_1)
         # # print("validated")
         return len(self.pm0_1)>=1;
+
+    def getClimateValidity(self):
+        # print("Getting PM Validity")     
+        # print(self.pm0_1)
+        # # print("validated")
+        return len(self.temperature)>=1;
+
+    def getGPSValidity(self):
+        # print("Getting PM Validity")     
+        # print(self.pm0_1)
+        # # print("validated")
+        return len(self.latitude)>=1;
 
 
     def getAltitudeFromGeopy(latitude, longitude):
@@ -338,15 +413,6 @@ class node:
             return None
 
 
-    def changeStateV2(self):
-        # print("Change State V2")
-        if self.getPMValidity():
-            # print("Is Valid")
-            self.getTimeV2()
-            self.getAverageAll()
-            self.doCSV()
-        # self.evenState = not(self.evenState)
-        self.clearAll()      
 
     def clearAll(self):
         self.pc0_1      = []
@@ -377,6 +443,8 @@ class node:
         self.altitude          = []
         self.dateTimeGPS       = []
 
+    def dataAvailability(self):
+        return len(self.pc0_1)>0 or len(self.temperature)>0 or  len(self.latitude)>0
 
     def getAverageAll(self):
         # On this function it decides what data to use 
@@ -445,14 +513,14 @@ class node:
             self.humidityAvg     = statistics.mean(self.humidity)
             self.dewPointAvg     = statistics.mean(self.dewPoint)
             
-            self.latestClimateAvgDateTime = self.dateTimeCSV
+            self.latestClimateAvgDateTime = self.dateTimeClimateCSV
             self.latestTemperature        = self.temperatureAvg
             self.latestPressure           = self.pressureAvg
             self.latestHumidity           = self.humidityAvg
             self.latestDewPoint           = self.dewPointAvg
             
             climateDictionary = OrderedDict([
-                ("dateTime"         ,self.dateTimeStrCSV),
+                ("dateTime"         ,self.dateTimeClimateStrCSV),
                 ("nodeID"           ,self.nodeID),
                 ("climateSensor"    ,self.climateSensor),
                 ("Temperature"      ,self.temperatureAvg),
@@ -469,8 +537,8 @@ class node:
             self.climateRecent     = 1
 
             
-        else:   
-            if self.checkElapsedTime(self.dateTimeCSV,\
+        elif self.getPMValidity():   
+            if self.checkElapsedTime(self.dateTimePMCSV,\
                                      self.latestClimateAvgDateTime,\
                                         timedelta(minutes=10)):
                 self.climateFirmware = 1
@@ -480,7 +548,7 @@ class node:
                 self.humidityAvg     = self.latestHumidity
                 self.dewPointAvg     = self.latestDewPoint        
 
-            elif self.checkElapsedTime( self.dateTimeCSV,\
+            elif self.checkElapsedTime( self.dateTimePMCSV,\
                                             self.latestClimateAvgDateTime,\
                                                 timedelta(days=365*10)):
                 self.climateFirmware = 1
@@ -496,9 +564,9 @@ class node:
                     dateTimeJSON = datetime.strptime(\
                                         self.jsonClimateData['dateTime'],\
                                             '%Y-%m-%d %H:%M:%S.%f')
-                    if self.checkElapsedTime(dateTimeJSON,\
-                        self.dateTimeCSV,\
-                            timedelta(minutes=10)):
+                    if self.checkElapsedTime(self.dateTimePMCSV,\
+                                                dateTimeJSON,\
+                                                    timedelta(minutes=10)):
                         self.climateRecent = 1
                         self.climateJSON   = 1  
                         self.temperatureAvg  = self.jsonClimateData['Temperature']
@@ -525,13 +593,13 @@ class node:
             self.longitudeAvg  = statistics.mean(self.longitude)
             self.altitudeAvg   = statistics.mean(self.altitude)
 
-            self.latestGPSAvgDateTime     = self.dateTimeCSV
+            self.latestGPSAvgDateTime     = self.dateTimeGPSCSV
             self.latestLatitude           = self.latitudeAvg
             self.latestLongitude          = self.longitudeAvg
             self.latestAltitude           = self.altitudeAvg
 
             gpsDictionary = OrderedDict([
-                ("dateTime"         ,self.dateTimeStrCSV),
+                ("dateTime"         ,self.dateTimeGPSStrCSV),
                 ("nodeID"           ,self.nodeID),
                 ("gpsSensor"        ,self.gpsSensor),                                
                 ("Latitude"         ,self.latitudeAvg),                
@@ -545,17 +613,17 @@ class node:
             self.gpsConcurrent = 1
             self.gpsRecent     = 1
 
-        else:
-            if self.checkElapsedTime(self.dateTimeCSV,\
-                                     self.latestGPSAvgDateTime,\
-                                        timedelta(minutes=10)):
+        elif self.getPMValidity():
+            if self.checkElapsedTime(self.dateTimePMCSV,\
+                                        self.latestGPSAvgDateTime,\
+                                            timedelta(minutes=10)):
                 self.latitudeAvg   = self.latestLatitude
                 self.longitudeAvg  = self.latestLongitude
                 self.altitudeAvg   = self.latestAltitude
                 self.gpsRecent     = 1
                 self.gpsFirmware   = 1
 
-            elif self.checkElapsedTime( self.dateTimeCSV,\
+            elif self.checkElapsedTime( self.dateTimePMCSV,\
                                             self.latestGPSAvgDateTime,\
                                                 timedelta(days=365*10)):
                 self.gpsFirmware   = 1
@@ -568,9 +636,9 @@ class node:
                     dateTimeJSON = datetime.strptime(\
                                         self.jsonGPSData['dateTime'],\
                                             '%Y-%m-%d %H:%M:%S.%f')
-                    if self.checkElapsedTime(dateTimeJSON,\
-                        self.dateTimeCSV,\
-                            timedelta(minutes=10)):
+                    if self.checkElapsedTime(self.dateTimePMCSV,\
+                                                dateTimeJSON,\
+                                                    timedelta(minutes=10)):
                         self.GPSRecent = 1
 
                     self.GPSJSON   = 1  
@@ -583,7 +651,7 @@ class node:
                     self.longitudeAvg  = self.longitudeGit
                     self.altitudeAvg   = self.altitudeGit
                         
-    def applyHumidityCorrections(self):
+    def applyCorrections(self):
 
         self.pc0_1Cor, self.pc0_3Cor, self.pc0_5Cor, \
             self.pc1_0Cor, self.pc2_5Cor, self.pc5_0Cor,\
@@ -611,19 +679,21 @@ class node:
 
         if self.climateRecent:
             print("Applying ML")
+            self.applyMLCorrections()
 
 
-
-    def mlCorrectedPM(self):
+    def applyMLCorrections(self):
         try:
-            foggy = float(self.temperature) - float(self.dewPoint)
-            data = {'cor_pm2_5': [float(self.cor_pm2_5)],\
-                     'temperature': [float(self.temperature)],\
-                       'pressure': [self.pressure],\
-                          'humidity':[self.humidity], \
-                            'dewPoint':[self.dewPoint],\
+            foggy = float(self.temperatureAvg) - float(self.dewPointAvg)
+            print("Foggyness:" + str(foggy))
+            data = {'cor_pm2_5': [float(self.pm2_5ML)],\
+                     'temperature': [float(self.temperatureAvg)],\
+                       'pressure': [self.pressureAvg],\
+                          'humidity':[self.humidityAvg], \
+                            'dewPoint':[self.dewPointAvg],\
                                 'temp_dew':[foggy]}
             dfInput = pd.DataFrame(data)
+            print(dfInput)
             prediction = self.makePrediction(loadedPMModel, dfInput)
             self.pm2_5ML    =  prediction["Predictions"][0]
             self.mlPM2_5CorrectionApplied = 1
@@ -632,6 +702,7 @@ class node:
             print("An error  occured")
             print(e)
             self.mlPM2_5     = self.pm2_5Cor
+            traceback.print_exc()
             return 
 
     def makePrediction(self,modelName, est_df):
@@ -652,8 +723,9 @@ class node:
         return time_difference <= timeDeltaIn
 
     def doCSV(self):
+        print("DO CSV")
         sensorDictionary = OrderedDict([
-            ("dateTime", self.dateTimeStrCSV),
+            ("dateTime", self.dateTimePMStrCSV),
             ("nodeID", self.nodeID),
             ("pmSensor", self.pmSensor),       
             ("climateSensor", self.climateSensor),     
@@ -661,13 +733,13 @@ class node:
             ("Latitude", self.latitudeAvg),                
             ("Longitude", self.longitudeAvg),
             ("Altitude", self.altitudeAvg),    
-            ("PC0_1", self.pc0_1Cor),
-            ("PC0_3", self.pc0_3Cor),
-            ("PC0_5", self.pc0_5Cor),
-            ("PC1",   self.pc1_0Cor),
-            ("PC2_5", self.pc2_5Cor),
-            ("PC5",   self.pc5_0Cor),
-            ("PC10",  self.pc10_0Cor),
+            ("PC0_1", round(self.pc0_1Cor)),
+            ("PC0_3", round(self.pc0_3Cor)),
+            ("PC0_5", round(self.pc0_5Cor)),
+            ("PC1",   round(self.pc1_0Cor)),
+            ("PC2_5", round(self.pc2_5Cor)),
+            ("PC5",   round(self.pc5_0Cor)),
+            ("PC10",  round(self.pc10_0Cor)),
             ("PM0_1", self.pm0_1Cor),
             ("PM0_3", self.pm0_3Cor),
             ("PM0_5", self.pm0_5Cor),
@@ -680,13 +752,13 @@ class node:
             ("Pressure", self.pressureAvg),
             ("Humidity", self.humidityAvg),
             ("DewPoint", self.dewPointAvg),      
-            ("PC0_1Raw", self.pc0_1Avg),
-            ("PC0_3Raw", self.pc0_3Avg),
-            ("PC0_5Raw", self.pc0_5Avg),
-            ("PC1_0Raw", self.pc1_0Avg),
-            ("PC2_5Raw", self.pc2_5Avg),
-            ("PC5_0Raw", self.pc5_0Avg),
-            ("PC10_0Raw", self.pc10_0Avg),
+            ("PC0_1Raw", round(self.pc0_1Avg)),
+            ("PC0_3Raw", round(self.pc0_3Avg)),
+            ("PC0_5Raw", round(self.pc0_5Avg)),
+            ("PC1_0Raw", round(self.pc1_0Avg)),
+            ("PC2_5Raw", round(self.pc2_5Avg)),
+            ("PC5_0Raw", round(self.pc5_0Avg)),
+            ("PC10_0Raw",round(self.pc10_0Avg)),
             ("PM0_1Raw", self.pm0_1Avg),
             ("PM0_3Raw", self.pm0_3Avg),
             ("PM0_5Raw", self.pm0_5Avg),
@@ -699,7 +771,7 @@ class node:
             ("climateJSON", self.climateJSON), 
             ("climateDummy", self.climateDummy), 
             ("climateRecent", self.climateRecent), 
-            ("fogLikelyhood", self.fogLikelyhood),
+            ("fogLikelyhood", int(self.fogLikelyhood)),
             ("GPSConcurrent", self.GPSConcurrent), 
             ("GPSFirmware", self.GPSFirmware), 
             ("GPSJson", self.GPSJson), 
@@ -713,13 +785,11 @@ class node:
         ])
 
 
-        
-
         print()        
         print("===============MINTS===============")
         print(sensorDictionary)
         mP.writeCSV3( mP.getWritePathDateCSV(liveFolder,self.nodeID,\
-            datetime.strptime(self.dateTimeStrCSV,'%Y-%m-%d %H:%M:%S.%f'),\
+            datetime.strptime(self.dateTimePMStrCSV,'%Y-%m-%d %H:%M:%S.%f'),\
                 "calibrated"),sensorDictionary)
         print("CSV Written")
         # mL.writeMQTTLatestRepublish(sensorDictionary,"mintsCalibrated",self.nodeID)
