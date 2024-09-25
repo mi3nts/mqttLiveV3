@@ -12,7 +12,7 @@ from mintsXU4 import mintsSensorReader as mSR
 from mintsXU4 import mintsProcessing as mP
 import ssl
 from collections import OrderedDict
-import orjson
+# import orjson
 
 macAddress              = mD.macAddress
 mqttPort                = mD.mqttPort
