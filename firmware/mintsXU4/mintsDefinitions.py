@@ -17,7 +17,10 @@ latestOn                  = False
 
 mqttOn                    = True
 credentialsFile           = 'mintsXU4/credentials/credentials.yaml'
-credentials               = yaml.load(open(credentialsFile))
+# credentials               = yaml.load(open(credentialsFile))
+
+with open(credentialsFile, 'r') as file:
+    credentials = yaml.load(file, Loader=yaml.SafeLoader)
 
 sensorInfo                = pd.read_csv('https://raw.githubusercontent.com/mi3nts/mqttSubscribersV2/main/lists/sensorIDs.csv')
 portInfo                  = pd.read_csv('https://raw.githubusercontent.com/mi3nts/mqttSubscribersV2/main/lists/portIDs.csv')
